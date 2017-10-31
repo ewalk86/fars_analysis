@@ -45,9 +45,11 @@ test_trend_ca <- function(drug, data = clean_fars) {
 test_trend_log_reg <- function(drug, data = clean_fars) {
   if(drug == "Nonalcohol"){
     to_test <- clean_fars %>%
+      filter(!is.na(drug_type)) %>% 
       filter(drug_type != "Alcohol")
   } else{
     to_test <- clean_fars %>%
+      filter(!is.na(drug_type)) %>%
       filter(drug_type == drug)
   }
   log_reg <- glm(positive_for_drug ~ year, data = to_test,
