@@ -2,13 +2,9 @@
 library(tidyverse)
 
 #Confidence intervals for proportions
-perc_cis <- function(drug, data = clean_fars) {
-  to_test <- clean_fars %>% 
-    group_by(year) %>%
-    summarize(positive = sum(positive_for_drug, na.rm = TRUE),
-              trials = sum(!is.na(positive_for_drug)))
-  proportion <- to_test$positive / to_test$trials
-  standard_error <- sqrt((proportion * (1 - proportion)) / to_test$trials)
+perc_cis <- function(x, n) {
+  proportion <- x / n
+  standard_error <- sqrt((proportion * (1 - proportion)) / n)
   upper_ci <- (proportion + (1.96 * standard_error))
   lower_ci <- (proportion - (1.96 * standard_error))
   proportion_perc <- round((proportion * 100), digits = 1)
@@ -18,8 +14,6 @@ perc_cis <- function(drug, data = clean_fars) {
                           "%, ", upper_ci_perc, "%)")
   final_results
 }
-
-perc_cis(drug = "Alcohol")
 
 
 #Testing for trend using Cochran-Armitage trend test
@@ -42,11 +36,9 @@ test_trend_ca <- function(drug, data = clean_fars) {
   Z <- round(sqrt(ca_alcohol$statistic), digits = 1)
   p.value <- round(ca_alcohol$p.value, digits = 3)
   final_results <- data.frame(Z, p.value)
-  data.table::setDT(final_results, keep.rownames = FALSE)[] 
+  tibble::remove_rownames(final_results)
   return(final_results)
 }
-
-test_trend_ca(drug = "Nonalcohol")
 
 
 #Testing for trend using logistic regression
@@ -64,9 +56,7 @@ test_trend_log_reg <- function(drug, data = clean_fars) {
   Z <- round(log_reg_sum$statistic, digits = 1)
   p.value <- round(log_reg_sum$p.value, digits = 3)
   final_results <- data.frame(Z, p.value)
-  data.table::setDT(final_results, keep.rownames = FALSE)[] 
+  tibble::remove_rownames(final_results) 
   return(final_results)
 }
-
-test_trend_log_reg(drug = "Nonalcohol")
 

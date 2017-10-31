@@ -2,7 +2,9 @@
 title: "Reproduced analysis of FARS data"
 author: "Ethan Walker"
 date: "October 30, 2017"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r, include=FALSE}
@@ -16,36 +18,100 @@ source("../R/fars_functions.R")
 
 #Results
   
-```{r}
-clean_fars %>%
-mutate(year_cat = cut(year, breaks = c(1999, 2002, 2006, 2010),
-labels = c("1999-2002", "2003-2006",
-"2007-2010"),
-include.lowest = TRUE, right = TRUE)) %>%
-filter(!is.na(sex)) %>%
-group_by(drug_type, sex, year_cat) %>%
-summarize(n_non_missing = sum(!is.na(positive_for_drug)),
-positive_test = sum(positive_for_drug, na.rm = TRUE),
-perc_positive = round(100 * positive_test / n_non_missing, 1)) %>%
-select(drug_type, sex, year_cat, perc_positive) %>%
-unite(sex_year_cat, sex, year_cat) %>%
-spread(sex_year_cat, perc_positive) %>%
-knitr::kable(col.names = c("Drug type", "F 1999-2002",
-"F 2003-2006", "F 2007-2010",
-"M 1999-2002", "M 2003-2006",
-"M 2007-2010"))
+##Percentages of drivers testing positive by drug type, sex, and year group
+```{r, echo=FALSE}
+table_one <- clean_fars %>%
+  mutate(year_cat = cut(year, breaks = c(1999, 2002, 2006, 2010), 
+                        labels = c("1999-2002", "2003-2006", "2007-2010"), 
+                        include.lowest = TRUE, right = TRUE)) %>%
+  filter(!is.na(sex)) %>%
+  group_by(drug_type, sex, year_cat) %>%
+  summarize(n_non_missing = sum(!is.na(positive_for_drug)), 
+            positive_test = sum(positive_for_drug, na.rm = TRUE), 
+            perc_positive = round(100 * positive_test / n_non_missing, 1)) %>%
+  select(drug_type, sex, year_cat, perc_positive) %>%
+  unite(sex_year_cat, sex, year_cat) %>%
+  spread(sex_year_cat, perc_positive) %>%
+  knitr::kable(col.names = c("Drug type", "F 1999-2002", "F 2003-2006", 
+                             "F 2007-2010", "M 1999-2002", "M 2003-2006", 
+                             "M 2007-2010"))
+table_one
 ```
 
 
 ```{r}
-drug_list <- c("Alcohol", "Cannabinoid", "Depressant", "Narcotic", "Other", 
-               "Stimulant")
-drug_trend_tests <- lapply(drug_list, perc_cis)
-#drug_trend_tests <- dplyr::bind_rows(drug_trend_tests) %>%
-drug_trend_tests <- drug_trend_tests %>% 
-  dplyr::mutate(`Drug type` = drug_list) %>%
-  dplyr::select(`Drug type`)
-drug_trend_tests %>% knitr::kable()
+fig_one <- clean_fars %>% 
+  filter(!is.na(agecat)) %>% 
+  filter(drug_type != "Alcohol") %>% 
+  group_by(year, agecat) %>% 
+  summarize(n_non_missing = sum(!is.na(positive_for_drug)),
+    positive_test = sum(positive_for_drug, na.rm = TRUE),
+    perc_positive = round(100 * positive_test / n_non_missing, 1))
+fig_one
+
+fig_one_plot <- fig_one %>% 
+  ggplot(aes(x = year, y = perc_positive, colour = agecat)) +
+  geom_line()
+fig_one_plot
+
+```
+
+
+```{r}
+fig_two <- clean_fars %>% 
+  filter(!is.na(positive_for_drug)) %>% 
+  filter(drug_type != "Alcohol") %>% 
+  group_by(year, drug_type) %>% 
+  summarize(n_non_missing = sum(!is.na(positive_for_drug)),
+    positive_test = sum(positive_for_drug, na.rm = TRUE),
+    perc_positive = round(100 * positive_test / n_non_missing, 1))
+fig_two
+
+fig_two_plot <- fig_two %>% 
+  ggplot(aes(x = year, y = perc_positive, colour = drug_type)) +
+  geom_line()
+fig_two_plot
+
+```
+
+
+```{r}
+fig_three <- clean_fars %>% 
+  filter(!is.na(agecat)) %>% 
+  filter(drug_type == "Cannabinoid") %>% 
+  group_by(year, agecat) %>% 
+  summarize(n_non_missing = sum(!is.na(positive_for_drug)),
+    positive_test = sum(positive_for_drug, na.rm = TRUE),
+    perc_positive = round(100 * positive_test / n_non_missing, 1))
+fig_three
+
+fig_three_plot <- fig_three %>% 
+  ggplot(aes(x = year, y = perc_positive, colour = agecat)) +
+  geom_line()
+fig_three_plot
+
+```
+
+
+```{r}
+prev_one <- clean_fars %>%
+      filter(year %in% c("1999", "2010")) %>%
+      group_by(drug_type, year) %>%
+      summarize(positive = sum(positive_for_drug, na.rm = TRUE),
+                trials = sum(!is.na(positive_for_drug)))
+
+prev_two <- data.frame(prevalence = perc_cis(x = prev_one$positive, 
+                                             n = prev_one$trials))
+
+prev_one <- tibble::rowid_to_column(as.data.frame(prev_one, var = "rowid"))
+prev_two <- tibble::rowid_to_column(as.data.frame(prev_two, var = "rowid"))
+
+prev_final <- prev_one %>% 
+  full_join(prev_two, by = "rowid") %>% 
+  select(drug_type, year, prevalence) %>% 
+  spread(key = year, value = prevalence) %>% 
+  rename(`Drug type` = drug_type)
+knitr::kable(prev_final)
 ```
 
 
