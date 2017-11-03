@@ -21,18 +21,22 @@ test_trend_ca <- function(drug, data = clean_fars) {
   if(drug == "Nonalcohol"){
     to_test <- clean_fars %>%
       filter(drug_type != "Alcohol") %>%
+      group_by(unique_id, year) %>% 
+      summarize(positive_test = sum(positive_for_drug, na.rm = TRUE), 
+                positive = any(positive_test > 0),
+                total_tests = length(!is.na(positive_for_drug))) %>% 
+      ungroup() %>% 
       group_by(year) %>%
-      summarize(positive = sum(positive_for_drug, na.rm = TRUE),
-                trials = sum(!is.na(positive_for_drug)))
+      summarize(total_tests = sum(total_tests), positive = sum(positive)) 
   } else{
     to_test <- clean_fars %>%
       filter(drug_type == drug) %>%
       group_by(year) %>%
       summarize(positive = sum(positive_for_drug, na.rm = TRUE),
-                trials = sum(!is.na(positive_for_drug)))
+                total_tests = sum(!is.na(positive_for_drug)))
   }
   ca_alcohol <- prop.trend.test(x = to_test$positive,
-                                n = to_test$trials)
+                                n = to_test$total_tests)
   Z <- round(sqrt(ca_alcohol$statistic), digits = 1)
   p.value <- round(ca_alcohol$p.value, digits = 3)
   final_results <- data.frame(Z, p.value)
@@ -40,13 +44,17 @@ test_trend_ca <- function(drug, data = clean_fars) {
   return(final_results)
 }
 
+test_trend_ca(drug = "Nonalcohol")
 
 #Testing for trend using logistic regression
 test_trend_log_reg <- function(drug, data = clean_fars) {
   if(drug == "Nonalcohol"){
     to_test <- clean_fars %>%
       filter(!is.na(drug_type)) %>% 
-      filter(drug_type != "Alcohol")
+      filter(drug_type != "Alcohol") %>% 
+      group_by(unique_id, year) %>% 
+      summarize(positive_test = sum(positive_for_drug, na.rm = TRUE), 
+                positive_for_drug = any(positive_test > 0))
   } else{
     to_test <- clean_fars %>%
       filter(!is.na(drug_type)) %>%
@@ -62,3 +70,4 @@ test_trend_log_reg <- function(drug, data = clean_fars) {
   return(final_results)
 }
 
+test_trend_log_reg(drug = "Nonalcohol")
