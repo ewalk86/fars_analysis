@@ -18,23 +18,20 @@ perc_cis <- function(x, n) {
 
 #Testing for trend using Cochran-Armitage trend test
 test_trend_ca <- function(drug, data = clean_fars) {
-  if(drug == "Nonalcohol"){
-    to_test <- clean_fars %>%
+  if (drug == "Nonalcohol") {
+    to_test <- data %>% 
       filter(drug_type != "Alcohol") %>%
       group_by(unique_id, year) %>% 
-      summarize(positive_test = sum(positive_for_drug, na.rm = TRUE), 
-                positive = any(positive_test > 0),
-                total_tests = length(!is.na(positive_for_drug))) %>% 
-      ungroup() %>% 
-      group_by(year) %>%
-      summarize(total_tests = sum(total_tests), positive = sum(positive)) 
-  } else{
+      summarize(positive_for_drug = any(positive_for_drug))  
+  } else {
     to_test <- clean_fars %>%
-      filter(drug_type == drug) %>%
-      group_by(year) %>%
-      summarize(positive = sum(positive_for_drug, na.rm = TRUE),
-                total_tests = sum(!is.na(positive_for_drug)))
+      filter(drug_type == drug) 
   }
+  to_test <- to_test %>% 
+    group_by(year) %>%
+    summarize(positive = sum(positive_for_drug, na.rm = TRUE),
+              total_tests = sum(!is.na(positive_for_drug)))
+  
   ca_alcohol <- prop.trend.test(x = to_test$positive,
                                 n = to_test$total_tests)
   Z <- round(sqrt(ca_alcohol$statistic), digits = 1)
@@ -44,22 +41,19 @@ test_trend_ca <- function(drug, data = clean_fars) {
   return(final_results)
 }
 
-test_trend_ca(drug = "Nonalcohol")
 
 #Testing for trend using logistic regression
 test_trend_log_reg <- function(drug, data = clean_fars) {
-  if(drug == "Nonalcohol"){
-    to_test <- clean_fars %>%
-      filter(!is.na(drug_type)) %>% 
-      filter(drug_type != "Alcohol") %>% 
+  if (drug == "Nonalcohol") {
+    to_test <- data %>% 
+      filter(drug_type != "Alcohol") %>%
       group_by(unique_id, year) %>% 
-      summarize(positive_test = sum(positive_for_drug, na.rm = TRUE), 
-                positive_for_drug = any(positive_test > 0))
-  } else{
+      summarize(positive_for_drug = any(positive_for_drug))  
+  } else {
     to_test <- clean_fars %>%
-      filter(!is.na(drug_type)) %>%
-      filter(drug_type == drug)
+      filter(drug_type == drug) 
   }
+  
   log_reg <- glm(positive_for_drug ~ year, data = to_test,
                  family = binomial(link = "logit"))
   log_reg_sum <- slice(broom::tidy(log_reg), 2)
@@ -70,4 +64,3 @@ test_trend_log_reg <- function(drug, data = clean_fars) {
   return(final_results)
 }
 
-test_trend_log_reg(drug = "Nonalcohol")

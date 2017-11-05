@@ -11,6 +11,7 @@ output:
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(ggthemes)
 
 load("../data/clean_fars.RData")
 source("../R/fars_functions.R")
@@ -50,10 +51,29 @@ fig_one <- clean_fars %>%
   group_by(year, agecat) %>% 
   summarize(total_tests = length(positive), positive = sum(positive), 
             perc_positive = round(100 * positive / total_tests, 1))
+head(fig_one)
 
-fig_one_plot <- fig_one %>% 
-  ggplot(aes(x = year, y = perc_positive, colour = agecat)) +
-  geom_line()
+
+fig_one.1 <- clean_fars %>% 
+  filter(!is.na(agecat)) %>% 
+  filter(drug_type != "Alcohol") %>% 
+  group_by(unique_id, year, agecat) %>% 
+  summarize(positive_for_drug = any(positive_for_drug)) %>% 
+  ungroup() %>% 
+  group_by(year, agecat) %>% 
+  summarize(total_tests = length(positive_for_drug), 
+            positive = sum(positive_for_drug, na.rm = TRUE), 
+            perc_positive = round(100 * positive / total_tests, 1))
+head(fig_one.1)
+
+fig_one_plot <- fig_one.1 %>% 
+  ggplot(aes(x = year, y = perc_positive, position = agecat)) +
+  geom_line() +
+  geom_point(aes(x = year, y = perc_positive, shape = agecat)) +
+  scale_shape_manual("Age", values = c(17, 16, 15, 3)) +
+  scale_y_continuous(limits = c(0, 35)) +
+  theme_few() +
+  labs(x = "Year", y = "Positive for Nonalcoholic Drugs, %")
 fig_one_plot
 ```
 
