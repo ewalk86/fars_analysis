@@ -1,11 +1,14 @@
 ---
 title: "Reproduced analysis of FARS data"
 author: "Ethan Walker"
-date: "October 30, 2017"
-output:
-  pdf_document: default
-  html_document: default
+date: "November 8, 2017"
+output: pdf_document
+fontsize: 10pt
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
 
 ```{r, include=FALSE}
 library(dplyr)
@@ -40,37 +43,24 @@ table_one
 ```
 
 ##Figure 1: Prevalence of nonalcohol drugs in fatally injured drivers by year and age group
-```{r}
+```{r, fig.height=4, fig.width=7}
 fig_one <- clean_fars %>% 
   filter(!is.na(agecat)) %>% 
+  filter(!is.na(positive_for_drug)) %>% 
   filter(drug_type != "Alcohol") %>% 
   group_by(unique_id, year, agecat) %>% 
-  summarize(positive_test = sum(positive_for_drug, na.rm = TRUE), 
-            positive = any(positive_test > 0)) %>% 
+  summarize(positive_test = sum(positive_for_drug), 
+            positive = any(positive_test)) %>% 
   ungroup() %>% 
   group_by(year, agecat) %>% 
   summarize(total_tests = length(positive), positive = sum(positive), 
-            perc_positive = round(100 * positive / total_tests, 1))
-head(fig_one)
+            perc_positive = (100 * (positive / total_tests)))
 
-
-fig_one.1 <- clean_fars %>% 
-  filter(!is.na(agecat)) %>% 
-  filter(drug_type != "Alcohol") %>% 
-  group_by(unique_id, year, agecat) %>% 
-  summarize(positive_for_drug = any(positive_for_drug)) %>% 
-  ungroup() %>% 
-  group_by(year, agecat) %>% 
-  summarize(total_tests = length(positive_for_drug), 
-            positive = sum(positive_for_drug, na.rm = TRUE), 
-            perc_positive = round(100 * positive / total_tests, 1))
-head(fig_one.1)
-
-fig_one_plot <- fig_one.1 %>% 
+fig_one_plot <- fig_one %>% 
   ggplot(aes(x = year, y = perc_positive, position = agecat)) +
   geom_line() +
   geom_point(aes(x = year, y = perc_positive, shape = agecat)) +
-  scale_shape_manual("Age", values = c(17, 16, 15, 3)) +
+  scale_shape_manual("Age", values = c(16, 17, 15, 3)) +
   scale_y_continuous(limits = c(0, 35)) +
   theme_few() +
   labs(x = "Year", y = "Positive for Nonalcoholic Drugs, %")
@@ -78,7 +68,7 @@ fig_one_plot
 ```
 
 ##Figure 2: Prevalence of nonalcohol drugs in fatally injured drivers by year and drug type
-```{r}
+```{r, fig.height=4, fig.width=7}
 fig_two <- clean_fars %>% 
   filter(!is.na(positive_for_drug)) %>% 
   filter(drug_type != "Alcohol") %>% 
@@ -88,14 +78,19 @@ fig_two <- clean_fars %>%
     perc_positive = round(100 * positive_test / n_non_missing, 1))
 
 fig_two_plot <- fig_two %>% 
-  ggplot(aes(x = year, y = perc_positive, colour = drug_type)) +
-  geom_line()
+  ggplot(aes(x = year, y = perc_positive, position = drug_type)) +
+  geom_line() +
+  geom_point(aes(x = year, y = perc_positive, shape = drug_type)) +
+  scale_shape_manual("Drug Type", values = c(16, 17, 15, 3, 7)) +
+  scale_y_continuous(limits = c(0, 13), breaks = c(0, 4, 8, 12)) +
+  theme_few() +
+  labs(x = "Year", y = "Positive for Drugs, %")
 fig_two_plot
 
 ```
 
 ##Figure 3: Prevalence of cannabinoid drugs in fatally injured drivers by year and age group
-```{r}
+```{r, fig.height=4, fig.width=7}
 fig_three <- clean_fars %>% 
   filter(!is.na(agecat)) %>% 
   filter(drug_type == "Cannabinoid") %>% 
@@ -103,11 +98,15 @@ fig_three <- clean_fars %>%
   summarize(n_non_missing = sum(!is.na(positive_for_drug)),
     positive_test = sum(positive_for_drug, na.rm = TRUE),
     perc_positive = round(100 * positive_test / n_non_missing, 1))
-fig_three
 
 fig_three_plot <- fig_three %>% 
-  ggplot(aes(x = year, y = perc_positive, colour = agecat)) +
-  geom_line()
+  ggplot(aes(x = year, y = perc_positive, position = agecat)) +
+  geom_line() +
+  geom_point(aes(x = year, y = perc_positive, shape = agecat)) +
+  scale_shape_manual("Age", values = c(16, 17, 15, 3)) +
+  scale_y_continuous(limits = c(0, 19), breaks = c(0, 5, 10, 15)) +
+  theme_few() +
+  labs(x = "Year", y = "Positive for Cannabinoid, %")
 fig_three_plot
 
 ```
